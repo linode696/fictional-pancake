@@ -1,15 +1,55 @@
-name: Mode Debian Hardcore
-on: [push]
+name: Browser Haram via Tailscale
+
+# Kita pake manual trigger aja biar aman
+on: 
+  workflow_dispatch:
 
 jobs:
-  test-debian:
+  start-browser:
     runs-on: ubuntu-latest
-    container: debian:12 # <--- Ini kuncinya, jing!
     steps:
-      - name: Update Dulu Bos
-        run: apt-get update && apt-get install -y git curl
+      - name: Checkout (Basa basi)
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-      
-      - name: Cek OS
-        run: cat /etc/os-release
+      # 1. Konek ke Tailscale Network lu
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          version: latest
+          # Kasih nama hostname biar gampang dicari
+          hostname: gh-action-browser
+
+      # 2. Jalanin Docker Chromium (Webtop)
+      - name: Deploy Chromium Webtop
+        run: |
+          echo "Lagi narik image, sabar..."
+          docker run -d \
+            --name=chrome-gacor \
+            --security-opt seccomp=unconfined \
+            -e PUID=1000 -e PGID=1000 \
+            -e TZ=Asia/Jakarta \
+            -p 3000:3000 \
+            -p 3001:3001 \
+            --shm-size="2gb" \
+            lscr.io/linuxserver/chromium:latest
+          
+          echo "Docker udah jalan, tunggu bentar biar warming up..."
+          sleep 10
+
+      # 3. Tampilin IP buat lu akses
+      - name: INFO CARA AKSES
+        run: |
+          TS_IP=$(tailscale ip -4)
+          echo "========================================================"
+          echo "🔥 SUKSES JING! 🔥"
+          echo "Buka browser di HP/Windows lu (yang ada Tailscale-nya)"
+          echo "Akses URL ini: http://$TS_IP:3000"
+          echo "========================================================"
+
+      # 4. Tahan session biar ga langsung mati (Max 6 jam limit GitHub)
+      - name: Keep Alive (Max 6 Jam)
+        run: |
+          echo "Sesi aktif... tekan Cancel Workflow kalo udah bosen."
+          # Kita tail logs container biar step ini ga selesai-selesai
+          docker logs -f chrome-gacor
