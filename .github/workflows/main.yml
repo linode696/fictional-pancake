@@ -1,6 +1,5 @@
 name: Browser Haram via Tailscale
 
-# Kita pake manual trigger aja biar aman
 on: 
   workflow_dispatch:
 
@@ -8,22 +7,24 @@ jobs:
   start-browser:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (Basa basi)
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 1. Konek ke Tailscale Network lu
+      # FIX DISINI: Ganti v2 jadi v3
       - name: Connect Tailscale
-        uses: tailscale/github-action@v2
+        uses: tailscale/github-action@v3
         with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }} # (Opsional kalo mau ganti)
+          # Kita tetep pake authkey aja biar lu ga ribet seting lagi
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
           version: latest
-          # Kasih nama hostname biar gampang dicari
           hostname: gh-action-browser
+          # Tambahan biar ga rewel user-nya
+          args: --advertise-exit-node
 
-      # 2. Jalanin Docker Chromium (Webtop)
       - name: Deploy Chromium Webtop
         run: |
-          echo "Lagi narik image, sabar..."
+          echo "Gas tarik image..."
           docker run -d \
             --name=chrome-gacor \
             --security-opt seccomp=unconfined \
@@ -34,22 +35,18 @@ jobs:
             --shm-size="2gb" \
             lscr.io/linuxserver/chromium:latest
           
-          echo "Docker udah jalan, tunggu bentar biar warming up..."
+          echo "Tunggu bentar..."
           sleep 10
 
-      # 3. Tampilin IP buat lu akses
       - name: INFO CARA AKSES
         run: |
           TS_IP=$(tailscale ip -4)
           echo "========================================================"
-          echo "🔥 SUKSES JING! 🔥"
-          echo "Buka browser di HP/Windows lu (yang ada Tailscale-nya)"
-          echo "Akses URL ini: http://$TS_IP:3000"
+          echo "🔥 SUKSES JING! (Semoga) 🔥"
+          echo "Link akses: http://$TS_IP:3000"
           echo "========================================================"
 
-      # 4. Tahan session biar ga langsung mati (Max 6 jam limit GitHub)
       - name: Keep Alive (Max 6 Jam)
         run: |
           echo "Sesi aktif... tekan Cancel Workflow kalo udah bosen."
-          # Kita tail logs container biar step ini ga selesai-selesai
           docker logs -f chrome-gacor
