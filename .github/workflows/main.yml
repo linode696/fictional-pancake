@@ -1,0 +1,15 @@
+name: Mode Debian Hardcore
+on: [push]
+
+jobs:
+  test-debian:
+    runs-on: ubuntu-latest
+    container: debian:12 # <--- Ini kuncinya, jing!
+    steps:
+      - name: Update Dulu Bos
+        run: apt-get update && apt-get install -y git curl
+
+      - uses: actions/checkout@v4
+      
+      - name: Cek OS
+        run: cat /etc/os-release
